@@ -1,0 +1,77 @@
+{
+  "name": "schwarzplan",
+  "version": "1.0.0",
+  "description": "Schwarzplan Generator – TEK TO NIK Architekten",
+  "main": "dist/electron/main.js",
+  "scripts": {
+    "dev:renderer": "vite",
+    "dev:electron": "tsc -p tsconfig.electron.json && electron dist/electron/main.js --dev",
+    "dev": "concurrently \"npm run dev:renderer\" \"sleep 3 && npm run dev:electron\"",
+    "build:renderer": "vite build",
+    "build:electron": "tsc -p tsconfig.electron.json",
+    "build": "npm run build:renderer && npm run build:electron",
+    "start": "npm run build && electron .",
+    "pack": "npm run build && electron-builder --win --dir",
+    "dist": "npm run build && electron-builder --win"
+  },
+  "author": "TEK TO NIK Architekten",
+  "license": "ISC",
+  "type": "commonjs",
+  "dependencies": {
+    "leaflet": "^1.9.4",
+    "leaflet-minimap": "^3.6.1",
+    "pdfkit": "^0.18.0",
+    "react": "^19.2.5",
+    "react-dom": "^19.2.5",
+    "react-leaflet": "^5.0.0",
+    "svg-to-pdfkit": "^0.1.8"
+  },
+  "devDependencies": {
+    "@types/leaflet": "^1.9.21",
+    "@types/react": "^19.2.14",
+    "@types/react-dom": "^19.2.3",
+    "@vitejs/plugin-react": "^5.2.0",
+    "concurrently": "^9.2.1",
+    "electron": "^41.2.0",
+    "electron-builder": "^26.8.1",
+    "typescript": "^6.0.2",
+    "vite": "^7.3.2"
+  },
+  "build": {
+    "appId": "net.tektonik.schwarzplan",
+    "productName": "Schwarzplan",
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "dist/**/*",
+      "node_modules/**/*",
+      "package.json"
+    ],
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        },
+        {
+          "target": "portable",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "signAndEditExecutable": false
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true
+    },
+    "portable": {
+      "artifactName": "Schwarzplan-Portable.exe"
+    }
+  }
+}

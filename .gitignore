@@ -1,0 +1,9 @@
+node_modules/
+dist/
+release/
+*.exe
+.env
+.env.local
+.DS_Store
+Thumbs.db
+*.log
