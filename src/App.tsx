@@ -1,6 +1,5 @@
 import { useState, useCallback, useMemo, useRef, useEffect } from 'react'
 import AddressSearch from './components/AddressSearch'
-import RadiusSlider from './components/RadiusSlider'
 import ExportPanel from './components/ExportPanel'
 import MapView from './components/MapView'
 import LayerToggle from './components/LayerToggle'
@@ -8,13 +7,13 @@ import TektonikLogo from './components/TektonikLogo'
 import MapStyleSelector from './components/MapStyleSelector'
 import Section from './components/Section'
 import ExportPreview from './components/ExportPreview'
-import { IconSearch, IconRadius, IconLayers, IconExport, IconMap, IconEye } from './components/Icons'
+import { IconSearch, IconLayers, IconExport, IconMap } from './components/Icons'
 import { GeoResult } from './services/geocoding'
 import { fetchMapData, OverpassData, LayerType } from './services/overpass'
 import { getQueryRadius, getRealDimensions } from './services/scaleHelper'
 import { generateSVG } from './services/svgExport'
 import { generateDXF } from './services/dxfExport'
-import { LOAD_DEBOUNCE_MS, OVERPASS_CLIENT_TIMEOUT } from './services/constants'
+import { OVERPASS_CLIENT_TIMEOUT } from './services/constants'
 
 const DEFAULT_CENTER: [number, number] = [50.1109, 8.6821]
 const DEFAULT_ZOOM = 15
@@ -22,13 +21,12 @@ const DEFAULT_ZOOM = 15
 export default function App() {
   const [center, setCenter] = useState<[number, number]>(DEFAULT_CENTER)
   const [zoom, setZoom] = useState(DEFAULT_ZOOM)
-  const [location, setLocation] = useState<GeoResult | null>(null)
-  const [radius, setRadius] = useState(364)
   const [scale, setScale] = useState(1000)
   const [pageSize, setPageSize] = useState('A2')
-  const [landscape, setLandscape] = useState(false)
+  const [landscape, setLandscape] = useState(true)
   const [mapData, setMapData] = useState<OverpassData | null>(null)
   const [loading, setLoading] = useState(false)
+  const [locked, setLocked] = useState(false) // area locked after capture
   const [error, setError] = useState<string | null>(null)
   const [toast, setToast] = useState<string | null>(null)
   const [online, setOnline] = useState(navigator.onLine)
@@ -42,34 +40,33 @@ export default function App() {
   })
 
   const abortRef = useRef<AbortController | null>(null)
-  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
-  const lastLoadRef = useRef<{ lat: number; lon: number; radius: number } | null>(null)
+  const lockedCenter = useRef<[number, number]>(DEFAULT_CENTER)
 
-  // ── Online/offline ──
+  const exportArea = useMemo(() => getRealDimensions(scale, pageSize, landscape), [scale, pageSize, landscape])
+  const queryRadius = useMemo(() => getQueryRadius(scale, pageSize, landscape), [scale, pageSize, landscape])
+
+  // Online/offline
   useEffect(() => {
     const on = () => setOnline(true)
     const off = () => { setOnline(false); showToast('Keine Internetverbindung') }
-    window.addEventListener('online', on)
-    window.addEventListener('offline', off)
+    window.addEventListener('online', on); window.addEventListener('offline', off)
     return () => { window.removeEventListener('online', on); window.removeEventListener('offline', off) }
   }, [])
 
-  // ── Keyboard shortcuts ──
+  // Keyboard
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
-      if (preview) return // don't intercept when preview open
-      if (e.ctrlKey && e.key === 'e') { e.preventDefault(); startExport('svg') }
-      if (e.ctrlKey && e.key === 'p') { e.preventDefault(); startExport('pdf') }
-      if (e.ctrlKey && e.key === 'd') { e.preventDefault(); startExport('dxf') }
+      if (preview) return
+      if (e.key === ' ' && !e.ctrlKey && !(e.target instanceof HTMLInputElement)) {
+        e.preventDefault()
+        if (locked) handleRelease(); else handleCapture()
+      }
+      if (e.ctrlKey && e.key === 'e' && locked) { e.preventDefault(); startExport('svg') }
+      if (e.ctrlKey && e.key === 'p' && locked) { e.preventDefault(); startExport('pdf') }
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
   })
-
-  function showToast(msg: string) {
-    setToast(msg)
-    setTimeout(() => setToast(null), 3000)
-  }
 
   const stats = useMemo(() => {
     if (!mapData) return null
@@ -80,17 +77,17 @@ export default function App() {
     }
   }, [mapData])
 
-  // ── Data loading ──
+  function showToast(msg: string) {
+    setToast(msg); setTimeout(() => setToast(null), 3000)
+  }
+
+  // Data loading
   const loadData = useCallback(async (lat: number, lon: number, rad: number) => {
     if (abortRef.current) abortRef.current.abort()
     const controller = new AbortController()
     abortRef.current = controller
     const timeout = setTimeout(() => controller.abort(), OVERPASS_CLIENT_TIMEOUT)
-
-    setLoading(true)
-    setError(null)
-    lastLoadRef.current = { lat, lon, radius: rad }
-
+    setLoading(true); setError(null)
     try {
       const data = await fetchMapData(lat, lon, rad, controller.signal)
       setMapData(data)
@@ -99,85 +96,74 @@ export default function App() {
       if (err instanceof DOMException && err.name === 'AbortError') return
       setError(err instanceof Error ? err.message : 'Fehler beim Laden der Kartendaten')
       setMapData(null)
-    } finally {
-      clearTimeout(timeout)
-      setLoading(false)
-    }
+    } finally { clearTimeout(timeout); setLoading(false) }
   }, [])
 
-  function loadDebounced(lat: number, lon: number, rad: number) {
-    if (debounceRef.current) clearTimeout(debounceRef.current)
-    debounceRef.current = setTimeout(() => loadData(lat, lon, rad), LOAD_DEBOUNCE_MS)
-  }
-
-  // ── Handlers ──
+  // Handlers
   function handleAddressSelect(result: GeoResult) {
-    setLocation(result)
-    setCenter([result.lat, result.lon])
-    setZoom(16)
-    const rad = getQueryRadius(scale, pageSize, landscape)
-    setRadius(rad)
-    loadData(result.lat, result.lon, rad)
+    if (locked) return // can't move when locked
+    setCenter([result.lat, result.lon]); setZoom(16)
   }
 
-  function handleScaleChange(newScale: number, newRadius: number) {
+  /** CAPTURE: lock area + load data */
+  function handleCapture() {
+    if (loading) return
+    lockedCenter.current = center
+    setLocked(true)
+    loadData(center[0], center[1], queryRadius)
+  }
+
+  /** RELEASE: unlock area, clear data */
+  function handleRelease() {
+    setLocked(false)
+    setMapData(null)
+  }
+
+  function handleScaleChange(newScale: number) {
     setScale(newScale)
-    setRadius(newRadius)
-    if (location) loadDebounced(location.lat, location.lon, newRadius)
-  }
-
-  function handleApply() {
-    if (location) loadData(location.lat, location.lon, radius)
+    // If locked, reload with new scale
+    if (locked) {
+      const newRadius = getQueryRadius(newScale, pageSize, landscape)
+      loadData(lockedCenter.current[0], lockedCenter.current[1], newRadius)
+    }
   }
 
   function handleRetry() {
-    if (lastLoadRef.current) {
-      const { lat, lon, radius: rad } = lastLoadRef.current
-      loadData(lat, lon, rad)
-    }
+    loadData(lockedCenter.current[0], lockedCenter.current[1], queryRadius)
   }
 
-  // ── Export with preview ──
+  // Export
   function startExport(format: 'svg' | 'pdf' | 'dxf') {
-    if (!mapData || !location) return
-    const svg = generateSVG(mapData, location.lat, location.lon, scale, pageSize, landscape, layers)
+    if (!mapData) return
+    const c = lockedCenter.current
+    const svg = generateSVG(mapData, c[0], c[1], scale, pageSize, landscape, layers)
     setPreview({ svg, format })
   }
 
   async function confirmExport() {
-    if (!preview || !mapData || !location) return
-    setExporting(true)
-    setPreview(null)
+    if (!preview || !mapData) return
+    setExporting(true); setPreview(null)
     try {
+      const c = lockedCenter.current
       if (preview.format === 'svg') {
-        if (window.electronAPI) {
-          const path = await window.electronAPI.exportSVG(preview.svg)
-          if (path) showToast('SVG gespeichert')
-        } else { downloadString(preview.svg, 'schwarzplan.svg', 'image/svg+xml'); showToast('SVG heruntergeladen') }
+        if (window.electronAPI) { const p = await window.electronAPI.exportSVG(preview.svg); if (p) showToast('SVG gespeichert') }
+        else { dl(preview.svg, 'schwarzplan.svg', 'image/svg+xml'); showToast('SVG heruntergeladen') }
       } else if (preview.format === 'pdf') {
-        if (window.electronAPI) {
-          const path = await window.electronAPI.exportPDF({ svgContent: preview.svg, pageSize, landscape })
-          if (path) showToast('PDF gespeichert')
-        }
+        if (window.electronAPI) { const p = await window.electronAPI.exportPDF({ svgContent: preview.svg, pageSize, landscape }); if (p) showToast('PDF gespeichert') }
       } else if (preview.format === 'dxf') {
-        const dxf = generateDXF(mapData, location.lat, location.lon, layers)
-        if (window.electronAPI) {
-          const path = await window.electronAPI.exportDXF(dxf)
-          if (path) showToast('DXF gespeichert')
-        } else { downloadString(dxf, 'schwarzplan.dxf', 'application/dxf'); showToast('DXF heruntergeladen') }
+        const dxf = generateDXF(mapData, c[0], c[1], layers)
+        if (window.electronAPI) { const p = await window.electronAPI.exportDXF(dxf); if (p) showToast('DXF gespeichert') }
+        else { dl(dxf, 'schwarzplan.dxf', 'application/dxf'); showToast('DXF heruntergeladen') }
       }
     } finally { setExporting(false) }
   }
 
-  function downloadString(content: string, filename: string, mime: string) {
-    const blob = new Blob([content], { type: mime })
-    const url = URL.createObjectURL(blob)
+  function dl(content: string, filename: string, mime: string) {
     const a = document.createElement('a')
-    a.href = url; a.download = filename; a.click()
-    URL.revokeObjectURL(url)
+    a.href = URL.createObjectURL(new Blob([content], { type: mime }))
+    a.download = filename; a.click(); URL.revokeObjectURL(a.href)
   }
 
-  // ── Render ──
   return (
     <div className="app">
       <aside className="sidebar">
@@ -191,30 +177,38 @@ export default function App() {
 
         {!online && <div className="offline-banner">Keine Internetverbindung</div>}
 
-        <Section title="Adresse" icon={<IconSearch />}>
-          <AddressSearch onSelect={handleAddressSelect} loading={loading} />
+        {/* Address — only for navigation, disabled when locked */}
+        <Section title="Adresse" icon={<IconSearch />} defaultOpen={!locked}>
+          <AddressSearch onSelect={handleAddressSelect} loading={loading || locked} />
         </Section>
 
-        <Section title="Bereich" icon={<IconRadius />}>
-          <RadiusSlider value={radius} onChange={setRadius} disabled={loading} />
-          {location && (
-            <button className="apply-btn" onClick={handleApply} disabled={loading}>
-              {loading ? 'Wird geladen...' : 'Anwenden'}
-            </button>
-          )}
-        </Section>
+        {/* CAPTURE / RELEASE button */}
+        {!locked ? (
+          <button className="capture-btn" onClick={handleCapture} disabled={loading}>
+            {loading ? <><span className="capture-spinner" /> Wird geladen...</> : 'Bereich erfassen'}
+          </button>
+        ) : (
+          <button className="release-btn" onClick={handleRelease} disabled={loading}>
+            Bereich freigeben
+          </button>
+        )}
+
+        {!locked && (
+          <p className="capture-hint">Rahmen positionieren, dann erfassen. <kbd>Leertaste</kbd></p>
+        )}
 
         {loading && <div className="loading-bar"><div className="loading-bar-inner" /></div>}
 
+        {/* Stats — only when data loaded */}
         {stats && (
           <div className="stats">
             <div className="stats-grid">
               <span>{stats.buildings}</span><span>Gebäude</span>
               <span>{stats.roads}</span><span>Straßen</span>
               <span>{stats.water}</span><span>Gewässer</span>
-              <span>{stats.green}</span><span>Grünflächen</span>
-              <span>{stats.forest}</span><span>Wald</span>
-              <span>{stats.railway}</span><span>Eisenbahn</span>
+              {stats.green > 0 && <><span>{stats.green}</span><span>Grünflächen</span></>}
+              {stats.forest > 0 && <><span>{stats.forest}</span><span>Wald</span></>}
+              {stats.railway > 0 && <><span>{stats.railway}</span><span>Eisenbahn</span></>}
             </div>
           </div>
         )}
@@ -226,6 +220,7 @@ export default function App() {
           </div>
         )}
 
+        {/* These sections only active when locked (data loaded) */}
         <Section title="Kartenstil" icon={<IconMap />} defaultOpen={false}>
           <MapStyleSelector
             value={tileStyle}
@@ -233,20 +228,20 @@ export default function App() {
           />
         </Section>
 
-        <Section title="Ebenen" icon={<IconLayers />}>
+        <Section title="Ebenen" icon={<IconLayers />} defaultOpen={locked}>
           <LayerToggle
             layers={layers}
             onToggle={(l) => setLayers(prev => ({ ...prev, [l]: !prev[l] }))}
-            disabled={loading}
+            disabled={loading || !locked}
             hasData={mapData !== null}
           />
         </Section>
 
-        <Section title="Export" icon={<IconExport />}>
+        <Section title="Export" icon={<IconExport />} defaultOpen={locked}>
           <ExportPanel
-            disabled={!mapData || exporting}
+            disabled={!mapData || exporting || !locked}
             exporting={exporting}
-            onScaleChange={handleScaleChange}
+            onScaleChange={(s) => handleScaleChange(s)}
             currentScale={scale}
             pageSize={pageSize}
             onPageSizeChange={setPageSize}
@@ -258,36 +253,29 @@ export default function App() {
           />
         </Section>
 
-        <div className="footer-brand">
-          <span>tektonik.net</span>
-        </div>
+        <div className="footer-brand"><span>tektonik.net</span></div>
       </aside>
 
       <main className="canvas-area">
-        {location && (
-          <div className="coord-display">
-            {center[0].toFixed(5)}, {center[1].toFixed(5)} | R {radius}m
-          </div>
-        )}
+        <div className="coord-display">
+          {center[0].toFixed(5)}, {center[1].toFixed(5)} | M 1:{scale} | {pageSize}{landscape ? ' quer' : ''}
+          {locked && ' | 🔒'}
+        </div>
 
-        {/* Crosshair */}
-        <div className="crosshair" />
+        {!locked && <div className="crosshair" />}
 
         <MapView
           center={center}
           zoom={zoom}
           data={mapData}
           visibleLayers={layers}
-          exportArea={location ? getRealDimensions(scale, pageSize, landscape) : null}
+          exportArea={exportArea}
           tileUrl={tileUrl}
-          onMapMove={(c, z) => { setCenter(c); setZoom(z) }}
+          locked={locked}
+          onMapMove={(c, z) => { if (!locked) { setCenter(c); setZoom(z) } }}
           onContextClick={(lat, lon) => {
-            const result: GeoResult = { lat, lon, displayName: `${lat.toFixed(5)}, ${lon.toFixed(5)}` }
-            setLocation(result)
+            if (locked) return
             setCenter([lat, lon])
-            const rad = getQueryRadius(scale, pageSize, landscape)
-            setRadius(rad)
-            loadData(lat, lon, rad)
           }}
         />
 

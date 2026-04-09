@@ -11,6 +11,7 @@ interface Props {
   visibleLayers: Record<LayerType, boolean>
   exportArea?: { widthM: number; heightM: number } | null
   tileUrl: string
+  locked?: boolean
   onMapMove?: (center: [number, number], zoom: number) => void
   onContextClick?: (lat: number, lon: number) => void
 }
@@ -24,7 +25,7 @@ function wayToLatLngs(way: OsmWay, nodes: Map<number, OsmNode>): L.LatLng[] {
   return out
 }
 
-export default function MapView({ center, zoom, data, visibleLayers, exportArea, tileUrl, onMapMove, onContextClick }: Props) {
+export default function MapView({ center, zoom, data, visibleLayers, exportArea, tileUrl, locked, onMapMove, onContextClick }: Props) {
   const containerRef = useRef<HTMLDivElement>(null)
   const mapRef = useRef<L.Map | null>(null)
   const tileRef = useRef<L.TileLayer | null>(null)
@@ -103,6 +104,28 @@ export default function MapView({ center, zoom, data, visibleLayers, exportArea,
     group.addTo(map)
     featuresRef.current = group
   }, [data, layerKey]) // eslint-disable-line
+
+  // Lock/unlock map interaction + zoom-to-fit export area
+  useEffect(() => {
+    const map = mapRef.current; if (!map) return
+    if (locked) {
+      map.dragging.disable(); map.touchZoom.disable(); map.doubleClickZoom.disable()
+      map.scrollWheelZoom.disable(); map.boxZoom.disable(); map.keyboard.disable()
+      // Zoom to fit the export rectangle
+      if (exportArea) {
+        const cosLat = Math.cos(center[0] * Math.PI / 180)
+        const hLat = (exportArea.heightM / 2) / 111320
+        const hLon = (exportArea.widthM / 2) / (111320 * cosLat)
+        map.fitBounds([
+          [center[0] - hLat, center[1] - hLon],
+          [center[0] + hLat, center[1] + hLon]
+        ], { padding: [30, 30], animate: true, duration: 0.5 })
+      }
+    } else {
+      map.dragging.enable(); map.touchZoom.enable(); map.doubleClickZoom.enable()
+      map.scrollWheelZoom.enable(); map.boxZoom.enable(); map.keyboard.enable()
+    }
+  }, [locked]) // eslint-disable-line
 
   // Export rect
   useEffect(() => {
