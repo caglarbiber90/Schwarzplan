@@ -10,6 +10,7 @@ interface Props {
   onExportSVG: () => void
   onExportPDF: () => void
   onExportDXF: () => void
+  hideExportButtons?: boolean
 }
 
 const SCALES = [
@@ -30,7 +31,7 @@ const PAGE_SIZES = [
 export default function ExportPanel({
   disabled, exporting, onScaleChange, currentScale,
   pageSize, onPageSizeChange, landscape, onLandscapeChange,
-  onExportSVG, onExportPDF, onExportDXF
+  onExportSVG, onExportPDF, onExportDXF, hideExportButtons
 }: Props) {
   const btnDisabled = disabled || exporting
 
@@ -62,17 +63,19 @@ export default function ExportPanel({
         </label>
       </div>
 
-      <div className="export-buttons">
-        <button className="export-btn-format" onClick={onExportSVG} disabled={btnDisabled}>
-          {exporting ? '...' : 'SVG'}
-        </button>
-        <button className="export-btn-format" onClick={onExportPDF} disabled={btnDisabled}>
-          {exporting ? '...' : 'PDF'}
-        </button>
-        <button className="export-btn-format" onClick={onExportDXF} disabled={btnDisabled}>
-          {exporting ? '...' : 'DXF'}
-        </button>
-      </div>
+      {!hideExportButtons && (
+        <div className="export-buttons">
+          <button className="export-btn-format" onClick={onExportSVG} disabled={btnDisabled}>
+            {exporting ? '...' : 'SVG'}
+          </button>
+          <button className="export-btn-format" onClick={onExportPDF} disabled={btnDisabled}>
+            {exporting ? '...' : 'PDF'}
+          </button>
+          <button className="export-btn-format" onClick={onExportDXF} disabled={btnDisabled}>
+            {exporting ? '...' : 'DXF'}
+          </button>
+        </div>
+      )}
     </div>
   )
 }

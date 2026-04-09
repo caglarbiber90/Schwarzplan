@@ -36,7 +36,7 @@ export default function App() {
   const [preview, setPreview] = useState<{ svg: string; format: 'svg' | 'pdf' | 'dxf' } | null>(null)
   const [layers, setLayers] = useState<Record<LayerType, boolean>>({
     building: true, road: true, water: true,
-    green: false, forest: false, railway: false
+    green: true, forest: true, railway: true
   })
 
   const abortRef = useRef<AbortController | null>(null)
@@ -177,12 +177,32 @@ export default function App() {
 
         {!online && <div className="offline-banner">Keine Internetverbindung</div>}
 
-        {/* Address — only for navigation, disabled when locked */}
+        {/* 1. Address — navigation only */}
         <Section title="Adresse" icon={<IconSearch />} defaultOpen={!locked}>
           <AddressSearch onSelect={handleAddressSelect} loading={loading || locked} />
         </Section>
 
-        {/* CAPTURE / RELEASE button */}
+        {/* 2. Scale + Paper — always visible, choose BEFORE capture */}
+        {!locked && (
+          <Section title="Export-Einstellungen" icon={<IconExport />} defaultOpen={true}>
+            <ExportPanel
+              disabled={false}
+              exporting={false}
+              onScaleChange={(s) => handleScaleChange(s)}
+              currentScale={scale}
+              pageSize={pageSize}
+              onPageSizeChange={setPageSize}
+              landscape={landscape}
+              onLandscapeChange={setLandscape}
+              onExportSVG={() => {}}
+              onExportPDF={() => {}}
+              onExportDXF={() => {}}
+              hideExportButtons={true}
+            />
+          </Section>
+        )}
+
+        {/* 3. CAPTURE / RELEASE */}
         {!locked ? (
           <button className="capture-btn" onClick={handleCapture} disabled={loading}>
             {loading ? <><span className="capture-spinner" /> Wird geladen...</> : 'Bereich erfassen'}
@@ -199,7 +219,7 @@ export default function App() {
 
         {loading && <div className="loading-bar"><div className="loading-bar-inner" /></div>}
 
-        {/* Stats — only when data loaded */}
+        {/* 4. After capture — stats */}
         {stats && (
           <div className="stats">
             <div className="stats-grid">
@@ -220,38 +240,42 @@ export default function App() {
           </div>
         )}
 
-        {/* These sections only active when locked (data loaded) */}
-        <Section title="Kartenstil" icon={<IconMap />} defaultOpen={false}>
-          <MapStyleSelector
-            value={tileStyle}
-            onChange={(id, url) => { setTileStyle(id); setTileUrl(url) }}
-          />
-        </Section>
+        {/* 5. After capture — Kartenstil + Ebenen + Export buttons */}
+        {locked && (
+          <>
+            <Section title="Kartenstil" icon={<IconMap />} defaultOpen={false}>
+              <MapStyleSelector
+                value={tileStyle}
+                onChange={(id, url) => { setTileStyle(id); setTileUrl(url) }}
+              />
+            </Section>
 
-        <Section title="Ebenen" icon={<IconLayers />} defaultOpen={locked}>
-          <LayerToggle
-            layers={layers}
-            onToggle={(l) => setLayers(prev => ({ ...prev, [l]: !prev[l] }))}
-            disabled={loading || !locked}
-            hasData={mapData !== null}
-          />
-        </Section>
+            <Section title="Ebenen" icon={<IconLayers />} defaultOpen={true}>
+              <LayerToggle
+                layers={layers}
+                onToggle={(l) => setLayers(prev => ({ ...prev, [l]: !prev[l] }))}
+                disabled={loading}
+                hasData={mapData !== null}
+              />
+            </Section>
 
-        <Section title="Export" icon={<IconExport />} defaultOpen={locked}>
-          <ExportPanel
-            disabled={!mapData || exporting || !locked}
-            exporting={exporting}
-            onScaleChange={(s) => handleScaleChange(s)}
-            currentScale={scale}
-            pageSize={pageSize}
-            onPageSizeChange={setPageSize}
-            landscape={landscape}
-            onLandscapeChange={setLandscape}
-            onExportSVG={() => startExport('svg')}
-            onExportPDF={() => startExport('pdf')}
-            onExportDXF={() => startExport('dxf')}
-          />
-        </Section>
+            <Section title="Export" icon={<IconExport />} defaultOpen={true}>
+              <ExportPanel
+                disabled={!mapData || exporting}
+                exporting={exporting}
+                onScaleChange={(s) => handleScaleChange(s)}
+                currentScale={scale}
+                pageSize={pageSize}
+                onPageSizeChange={setPageSize}
+                landscape={landscape}
+                onLandscapeChange={setLandscape}
+                onExportSVG={() => startExport('svg')}
+                onExportPDF={() => startExport('pdf')}
+                onExportDXF={() => startExport('dxf')}
+              />
+            </Section>
+          </>
+        )}
 
         <div className="footer-brand"><span>tektonik.net</span></div>
       </aside>

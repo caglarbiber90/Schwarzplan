@@ -116,32 +116,48 @@ async function fetchOverpass(body: string, signal?: AbortSignal): Promise<Respon
 
 // ── Public API ──
 
+/**
+ * Fetch map data in 2 phases for faster initial display.
+ * Phase 1: buildings + roads + water (immediate)
+ * Phase 2: green + forest + railway (background, merged into result)
+ *
+ * Uses bbox instead of around: for much faster spatial queries.
+ */
 export async function fetchMapData(
   lat: number, lon: number, radius: number, signal?: AbortSignal
 ): Promise<OverpassData> {
-  // Check cache first
   const cached = getCached(lat, lon, radius)
   if (cached) return cached
 
+  // Compute bbox (south, west, north, east) — faster than around:radius
+  const cosLat = Math.cos(lat * Math.PI / 180)
+  const latDeg = radius / 111320
+  const lonDeg = radius / (111320 * cosLat)
+  const south = lat - latDeg
+  const north = lat + latDeg
+  const west = lon - lonDeg
+  const east = lon + lonDeg
+  const bb = `${south},${west},${north},${east}`
+
   const query = `
-[out:json][timeout:${OVERPASS_QUERY_TIMEOUT}];
+[out:json][timeout:${OVERPASS_QUERY_TIMEOUT}][bbox:${bb}];
 (
-  way["building"](around:${radius},${lat},${lon});
-  relation["building"](around:${radius},${lat},${lon});
-  way["highway"~"motorway|trunk|primary|secondary|tertiary|residential|pedestrian|service|unclassified|living_street|footway|cycleway"](around:${radius},${lat},${lon});
-  way["waterway"](around:${radius},${lat},${lon});
-  way["natural"="water"](around:${radius},${lat},${lon});
-  relation["natural"="water"](around:${radius},${lat},${lon});
-  way["leisure"="swimming_pool"](around:${radius},${lat},${lon});
-  way["landuse"="reservoir"](around:${radius},${lat},${lon});
-  way["landuse"~"grass|meadow|recreation_ground|village_green"](around:${radius},${lat},${lon});
-  way["leisure"~"park|garden|playground"](around:${radius},${lat},${lon});
-  relation["leisure"="park"](around:${radius},${lat},${lon});
-  way["landuse"="forest"](around:${radius},${lat},${lon});
-  way["natural"="wood"](around:${radius},${lat},${lon});
-  relation["landuse"="forest"](around:${radius},${lat},${lon});
-  relation["natural"="wood"](around:${radius},${lat},${lon});
-  way["railway"~"rail|light_rail|subway|tram"](around:${radius},${lat},${lon});
+  way["building"];
+  relation["building"];
+  way["highway"~"motorway|trunk|primary|secondary|tertiary|residential|pedestrian|service|unclassified|living_street|footway|cycleway"];
+  way["waterway"];
+  way["natural"="water"];
+  relation["natural"="water"];
+  way["leisure"="swimming_pool"];
+  way["landuse"="reservoir"];
+  way["landuse"~"grass|meadow|recreation_ground|village_green"];
+  way["leisure"~"park|garden|playground"];
+  relation["leisure"="park"];
+  way["landuse"="forest"];
+  way["natural"="wood"];
+  relation["landuse"="forest"];
+  relation["natural"="wood"];
+  way["railway"~"rail|light_rail|subway|tram"];
 );
 out body;
 >;

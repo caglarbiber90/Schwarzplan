@@ -48,7 +48,8 @@
     "files": [
       "dist/**/*",
       "node_modules/**/*",
-      "package.json"
+      "package.json",
+      "resources/icon.png"
     ],
     "icon": "resources/icon.png",
     "win": {
