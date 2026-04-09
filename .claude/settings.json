@@ -1,0 +1,30 @@
+{
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write",
+        "command": "cd \"C:/Users/c.biber/Documents/APP/schwarzplan\" && npx tsc --noEmit -p tsconfig.json 2>&1 | head -10; npx tsc --noEmit -p tsconfig.electron.json 2>&1 | head -10"
+      }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": "Edit|Write",
+        "command": "if echo \"$TOOL_INPUT\" | grep -qE '(package-lock\\.json|resources/icon)'; then echo 'BLOCKED: This file is protected. Edit manually if needed.' >&2; exit 1; fi"
+      }
+    ]
+  },
+  "permissions": {
+    "allow": [
+      "Edit",
+      "Write",
+      "Bash(npm run *)",
+      "Bash(npx tsc *)",
+      "Bash(npx electron *)",
+      "Bash(npx electron-builder *)",
+      "Bash(git *)",
+      "Bash(gh *)",
+      "Bash(curl *)",
+      "Bash(node *)"
+    ]
+  }
+}
