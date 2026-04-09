@@ -21,6 +21,7 @@
     "leaflet": "^1.9.4",
     "leaflet-minimap": "^3.6.1",
     "pdfkit": "^0.18.0",
+    "png-to-ico": "^3.0.1",
     "react": "^19.2.5",
     "react-dom": "^19.2.5",
     "react-leaflet": "^5.0.0",
