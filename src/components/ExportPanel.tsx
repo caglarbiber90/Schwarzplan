@@ -53,8 +53,6 @@ export default function ExportPanel({
 
   return (
     <div className="export-panel">
-      <label className="section-label">Export</label>
-
       <div className="export-row">
         <label>Maßstab</label>
         <div className="scale-buttons">

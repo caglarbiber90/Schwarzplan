@@ -19,7 +19,6 @@ const LAYER_INFO: { key: LayerType; label: string; color: string }[] = [
 export default function LayerToggle({ layers, onToggle, disabled, hasData }: Props) {
   return (
     <div className={`layer-toggle ${!hasData ? 'layer-toggle--empty' : ''}`}>
-      <label className="section-label">Ebenen</label>
       {!hasData && (
         <p className="layer-hint">Zuerst eine Adresse suchen, um Ebenen zu aktivieren.</p>
       )}

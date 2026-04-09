@@ -13,7 +13,6 @@ interface Props {
 export default function MapStyleSelector({ value, onChange }: Props) {
   return (
     <div className="map-style-selector">
-      <label className="section-label">Kartenstil</label>
       <div className="style-buttons">
         {MAP_STYLES.map((s) => (
           <button
