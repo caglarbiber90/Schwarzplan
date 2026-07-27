@@ -19,6 +19,7 @@ Format: `vMAJOR.MINOR.PATCH`
 3. `git tag` → `vX.Y.Z`
 4. GitHub Release → `vX.Y.Z`
 5. EXE filename → `Schwarzplan-Portable.exe` (no version in filename)
+6. Portable EXE distribution → `Y:\KI\Software\Schwarzplan-Portable.exe`
 
 ### On every export/release
 
@@ -27,7 +28,8 @@ Format: `vMAJOR.MINOR.PATCH`
 3. Commit with message: `release: vX.Y.Z — short description`
 4. Tag: `git tag vX.Y.Z`
 5. Build EXE: `npm run build && npx electron-builder --win --config.win.target=portable`
-6. Create GitHub release: `gh release create vX.Y.Z --title "Schwarzplan vX.Y.Z" release/Schwarzplan-Portable.exe`
+6. Copy EXE to shared drive: `cp release/Schwarzplan-Portable.exe "Y:/KI/Software/Schwarzplan-Portable.exe"`
+7. Create GitHub release: `gh release create vX.Y.Z --title "Schwarzplan vX.Y.Z" release/Schwarzplan-Portable.exe`
 
 ## Project Structure
 

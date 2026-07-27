@@ -1,6 +1,6 @@
 {
   "name": "schwarzplan",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Schwarzplan Generator – TEK TO NIK Architekten",
   "main": "dist/electron/main.js",
   "scripts": {

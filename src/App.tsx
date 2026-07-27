@@ -66,7 +66,7 @@ export default function App() {
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  })
+  }, [locked, loading, preview, mapData])
 
   const stats = useMemo(() => {
     if (!mapData) return null

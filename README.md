@@ -1,110 +1,88 @@
 # Schwarzplan Generator
 
-**TEK TO NIK Architekten** — Desktop application for generating architectural figure-ground plans (Schwarzpläne) from OpenStreetMap data.
-
-![Electron](https://img.shields.io/badge/Electron-41-blue) ![React](https://img.shields.io/badge/React-19-61dafb) ![TypeScript](https://img.shields.io/badge/TypeScript-6-3178c6) ![Leaflet](https://img.shields.io/badge/Leaflet-1.9-199900)
-
-## Features
-
-- **Interactive Map** — Leaflet-based map with pan, zoom, fly-to navigation
-- **Address Search** — Nominatim geocoding, type an address and the map flies there
-- **6 Layer Types** — Buildings, Roads, Water, Green spaces, Forest, Railway — toggle each on/off
-- **4 Map Styles** — Light, Dark, OSM, None (blank background)
-- **3 Export Formats** — SVG (vector, scale-accurate), PDF (vector via PDFKit), DXF (AutoCAD-compatible)
-- **Scale Selection** — 1:200, 1:500, 1:1.000, 1:2.000
-- **Paper Sizes** — A0 through A4, portrait and landscape
-- **Export Preview** — Preview the schwarzplan before exporting
-- **Right-Click Context** — Right-click anywhere on the map to generate a schwarzplan at that point
-- **Export Area Indicator** — Red dashed rectangle shows the exact export area on the map
-- **Scale Bar, North Arrow, Title Block** — Professional cartographic elements in SVG/PDF output
-- **Overpass API** — Fetches building/road/water data from OpenStreetMap with 3 mirror servers and automatic retry
-- **Query Cache** — 5-minute cache prevents redundant API calls
-- **Offline Detection** — Warns when internet connection is lost
-- **Keyboard Shortcuts** — Ctrl+E (SVG), Ctrl+P (PDF), Ctrl+D (DXF), Enter (select first search result)
-
-## Tech Stack
-
-| Layer | Technology |
-|-------|-----------|
-| Desktop | Electron 41 |
-| UI | React 19 + TypeScript |
-| Build | Vite 7 |
-| Map | Leaflet |
-| Geocoding | Nominatim (OpenStreetMap) |
-| Map Data | Overpass API |
-| PDF | PDFKit + svg-to-pdfkit |
-| Packaging | electron-builder |
-
-## Getting Started
-
-```bash
-# Install dependencies
-npm install
-
-# Development (2 terminals)
-npm run dev:renderer    # Vite dev server
-npm run dev:electron    # Electron app
-
-# Or both at once
-npm run dev
-
-# Production build
-npm run build
-
-# Package as portable EXE
-npm run dist
-```
-
-## Project Structure
-
-```
-src/
-├── components/
-│   ├── AddressSearch.tsx    # Nominatim address search with autocomplete
-│   ├── ExportPanel.tsx      # Scale, paper size, format selection
-│   ├── ExportPreview.tsx    # Preview modal before export
-│   ├── Icons.tsx            # Inline SVG icons
-│   ├── LayerToggle.tsx      # 6-layer visibility toggles
-│   ├── MapStyleSelector.tsx # Light/Dark/OSM/None tile selection
-│   ├── MapView.tsx          # Leaflet map with GeoJSON overlays
-│   ├── RadiusSlider.tsx     # Query radius control
-│   ├── Section.tsx          # Collapsible sidebar sections
-│   └── TektonikLogo.tsx     # Brand logo
-├── services/
-│   ├── constants.ts         # Shared constants (paper sizes, colors, timeouts)
-│   ├── dxfExport.ts         # DXF file generation (AutoCAD)
-│   ├── geo.ts               # Shared projection/coordinate utilities
-│   ├── geocoding.ts         # Nominatim API client
-│   ├── overpass.ts          # Overpass API client with cache + retry
-│   ├── scaleHelper.ts       # Scale/radius calculations
-│   └── svgExport.ts         # SVG file generation (vector, scale-accurate)
-├── styles/
-│   └── app.css
-└── App.tsx                  # Main application
-
-electron/
-├── main.ts                  # Electron main process (PDF/SVG/DXF export, CSP)
-└── preload.ts               # IPC bridge
-```
-
-## Security
-
-- **Content Security Policy** — Restricts network access to known domains only
-- **XSS Protection** — All coordinates validated with `isSafeCoord()` before SVG/DXF injection
-- **Input Validation** — Nominatim and Overpass responses are type-checked and validated
-- **Context Isolation** — Electron runs with `contextIsolation: true`, `nodeIntegration: false`
-
-## Data Sources
-
-- [OpenStreetMap](https://www.openstreetmap.org/) — Map data (ODbL license)
-- [Overpass API](https://overpass-api.de/) — Building/road/water queries
-- [Nominatim](https://nominatim.openstreetmap.org/) — Geocoding
-- [CARTO](https://carto.com/) — Base map tiles
-
-## License
-
-ISC
+**TEK TO NIK Architekten** -- Schwarzplaene aus OpenStreetMap-Daten erstellen, anpassen und exportieren.
 
 ---
 
-**TEK TO NIK Architekten** — [tektonik.net](https://tektonik.net)
+## Was ist ein Schwarzplan?
+
+Ein Schwarzplan (Figure-Ground-Diagramm) zeigt die bebaute Struktur einer Stadt: Gebaeude erscheinen schwarz auf weissem Grund. Er dient in der Architektur und Stadtplanung zur Analyse von Stadtstrukturen, Bebauungsdichten und Freiraeumen.
+
+Diese Anwendung erstellt Schwarzplaene automatisch aus OpenStreetMap-Daten -- fuer jeden Ort weltweit.
+
+## Installation
+
+1. Die Datei `Schwarzplan-Portable.exe` vom Server kopieren:
+   ```
+   Y:\KI\Software\Schwarzplan-Portable.exe
+   ```
+2. Die Datei an einen beliebigen Ort auf dem eigenen Rechner ablegen (z. B. Desktop oder einen Projektordner).
+3. Doppelklick auf die EXE -- die Anwendung startet sofort. Es ist keine Installation noetig.
+
+## Bedienung
+
+### 1. Ort suchen
+
+Oben links im Suchfeld eine Adresse oder einen Ortsnamen eingeben. Die Karte fliegt automatisch zum Zielort. Alternativ kann die Karte mit der Maus verschoben und mit dem Scrollrad gezoomt werden.
+
+### 2. Massstab und Papierformat waehlen
+
+Vor dem Erfassen den gewuenschten Massstab (z. B. 1:1.000) und das Papierformat (z. B. A2 quer) einstellen. Der rote Rahmen auf der Karte zeigt den Druckbereich.
+
+### 3. Bereich erfassen
+
+Den Button **Bereich erfassen** klicken oder die `Leertaste` druecken. Die Anwendung laedt alle Kartendaten (Gebaeude, Strassen, Gewaesser usw.) fuer den markierten Bereich. Die Karte wird gesperrt, damit sich der Ausschnitt nicht versehentlich verschiebt.
+
+### 4. Ebenen anpassen
+
+Nach dem Erfassen koennen einzelne Ebenen ein- oder ausgeblendet werden:
+
+| Ebene | Inhalt |
+|-------|--------|
+| Gebaeude | Alle Gebaeudegrundrisse (schwarz) |
+| Strassen | Strassen und Wege |
+| Gewaesser | Fluesse, Seen, Kanaele |
+| Gruenflaechen | Parks, Gaerten, Spielplaetze |
+| Wald | Waelder und Gehoelze |
+| Eisenbahn | Schienen und Gleise |
+
+### 5. Exportieren
+
+Unter **Export** das gewuenschte Format waehlen:
+
+- **SVG** -- Vektorgrafik, massstabsgetreu druckbar (z. B. fuer Illustrator oder Inkscape)
+- **PDF** -- Sofort druckbar im gewaehlten Papierformat
+- **DXF** -- Fuer AutoCAD, Vectorworks, ArchiCAD und andere CAD-Programme
+
+Eine Vorschau wird angezeigt. Mit **Exportieren** wird die Datei gespeichert.
+
+### 6. Neuen Ausschnitt waehlen
+
+Den Button **Bereich freigeben** klicken oder die `Leertaste` druecken, um die Karte zu entsperren und einen neuen Ort zu waehlen.
+
+## Tastenkuerzel
+
+| Taste | Funktion |
+|-------|----------|
+| `Leertaste` | Bereich erfassen / freigeben |
+| `Strg + E` | SVG exportieren |
+| `Strg + P` | PDF exportieren |
+
+## Kartenstile
+
+Unter **Kartenstil** kann der Hintergrund der Karte geaendert werden (hell, dunkel, klassisch oder ohne). Der Kartenstil beeinflusst nur die Vorschau -- der Export ist immer schwarz-weiss.
+
+## Tipps
+
+- **Massstab zuerst waehlen** -- Der Massstab bestimmt, wie viel Flaeche geladen wird. Bei grossen Massstabszahlen (z. B. 1:2.000) wird ein groesserer Bereich erfasst.
+- **Weniger Ebenen = klarerer Plan** -- Fuer einen klassischen Schwarzplan nur die Ebene "Gebaeude" aktivieren.
+- **DXF fuer CAD** -- Der DXF-Export erzeugt separate Layer (BUILDINGS, ROADS, WATER usw.), die in CAD-Programmen einzeln bearbeitet werden koennen.
+- **Keine Internetverbindung?** -- Die Anwendung benoetigt Internet, um Kartendaten zu laden. Bei Verbindungsproblemen erscheint eine Warnung.
+
+## Datenquelle
+
+Alle Kartendaten stammen von [OpenStreetMap](https://www.openstreetmap.org/) und werden ueber die Overpass API abgerufen. Die Daten sind frei verfuegbar unter der Open Database License (ODbL).
+
+---
+
+**TEK TO NIK Architekten** -- [tektonik.net](https://tektonik.net)
