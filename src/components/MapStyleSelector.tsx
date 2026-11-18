@@ -1,13 +1,24 @@
-const MAP_STYLES = [
-  { id: 'light', label: 'Hell', url: 'https://{s}.basemaps.cartocdn.com/light_nolabels/{z}/{x}/{y}{r}.png' },
-  { id: 'dark', label: 'Dunkel', url: 'https://{s}.basemaps.cartocdn.com/dark_nolabels/{z}/{x}/{y}{r}.png' },
-  { id: 'osm', label: 'OSM', url: 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png' },
-  { id: 'none', label: 'Ohne', url: '' }
+// All styles use the keyless OpenStreetMap tile server. CARTO basemaps now
+// require an API key, so "Hell" and "Dunkel" are CSS-filtered OSM tiles.
+const OSM_TILES = 'https://tile.openstreetmap.org/{z}/{x}/{y}.png'
+
+export interface MapStyle {
+  id: string
+  label: string
+  url: string
+  className: string
+}
+
+const MAP_STYLES: MapStyle[] = [
+  { id: 'light', label: 'Hell', url: OSM_TILES, className: 'tiles-light' },
+  { id: 'dark', label: 'Dunkel', url: OSM_TILES, className: 'tiles-dark' },
+  { id: 'osm', label: 'OSM', url: OSM_TILES, className: '' },
+  { id: 'none', label: 'Ohne', url: '', className: '' }
 ]
 
 interface Props {
   value: string
-  onChange: (styleId: string, url: string) => void
+  onChange: (style: MapStyle) => void
 }
 
 export default function MapStyleSelector({ value, onChange }: Props) {
@@ -18,7 +29,7 @@ export default function MapStyleSelector({ value, onChange }: Props) {
           <button
             key={s.id}
             className={`style-btn ${value === s.id ? 'active' : ''}`}
-            onClick={() => onChange(s.id, s.url)}
+            onClick={() => onChange(s)}
           >
             {s.label}
           </button>

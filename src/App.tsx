@@ -4,7 +4,7 @@ import ExportPanel from './components/ExportPanel'
 import MapView from './components/MapView'
 import LayerToggle from './components/LayerToggle'
 import TektonikLogo from './components/TektonikLogo'
-import MapStyleSelector from './components/MapStyleSelector'
+import MapStyleSelector, { MAP_STYLES, MapStyle } from './components/MapStyleSelector'
 import Section from './components/Section'
 import ExportPreview from './components/ExportPreview'
 import { IconSearch, IconLayers, IconExport, IconMap } from './components/Icons'
@@ -30,8 +30,7 @@ export default function App() {
   const [error, setError] = useState<string | null>(null)
   const [toast, setToast] = useState<string | null>(null)
   const [online, setOnline] = useState(navigator.onLine)
-  const [tileStyle, setTileStyle] = useState('light')
-  const [tileUrl, setTileUrl] = useState('https://{s}.basemaps.cartocdn.com/light_nolabels/{z}/{x}/{y}{r}.png')
+  const [tileStyle, setTileStyle] = useState<MapStyle>(MAP_STYLES[0])
   const [exporting, setExporting] = useState(false)
   const [preview, setPreview] = useState<{ svg: string; format: 'svg' | 'pdf' | 'dxf' } | null>(null)
   const [layers, setLayers] = useState<Record<LayerType, boolean>>({
@@ -245,8 +244,8 @@ export default function App() {
           <>
             <Section title="Kartenstil" icon={<IconMap />} defaultOpen={false}>
               <MapStyleSelector
-                value={tileStyle}
-                onChange={(id, url) => { setTileStyle(id); setTileUrl(url) }}
+                value={tileStyle.id}
+                onChange={setTileStyle}
               />
             </Section>
 
@@ -294,7 +293,8 @@ export default function App() {
           data={mapData}
           visibleLayers={layers}
           exportArea={exportArea}
-          tileUrl={tileUrl}
+          tileUrl={tileStyle.url}
+          tileClassName={tileStyle.className}
           locked={locked}
           onMapMove={(c, z) => { if (!locked) { setCenter(c); setZoom(z) } }}
           onContextClick={(lat, lon) => {

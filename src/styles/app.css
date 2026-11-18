@@ -316,3 +316,7 @@ body {
 
 /* ── Print ── */
 @media print { .sidebar { display: none !important; } .app { display: block; } .canvas-area { padding: 0; background: #fff; } .map-container { display: none !important; } }
+
+/* Basemap styles: filtered OSM tiles (CARTO now needs an API key) */
+.tiles-light { filter: grayscale(1) brightness(1.12) contrast(0.75); }
+.tiles-dark { filter: grayscale(1) invert(1) brightness(0.85) contrast(0.9); }

@@ -11,6 +11,7 @@ interface Props {
   visibleLayers: Record<LayerType, boolean>
   exportArea?: { widthM: number; heightM: number } | null
   tileUrl: string
+  tileClassName?: string
   locked?: boolean
   onMapMove?: (center: [number, number], zoom: number) => void
   onContextClick?: (lat: number, lon: number) => void
@@ -25,7 +26,7 @@ function wayToLatLngs(way: OsmWay, nodes: Map<number, OsmNode>): L.LatLng[] {
   return out
 }
 
-export default function MapView({ center, zoom, data, visibleLayers, exportArea, tileUrl, locked, onMapMove, onContextClick }: Props) {
+export default function MapView({ center, zoom, data, visibleLayers, exportArea, tileUrl, tileClassName = '', locked, onMapMove, onContextClick }: Props) {
   const containerRef = useRef<HTMLDivElement>(null)
   const mapRef = useRef<L.Map | null>(null)
   const tileRef = useRef<L.TileLayer | null>(null)
@@ -43,10 +44,10 @@ export default function MapView({ center, zoom, data, visibleLayers, exportArea,
     if (!containerRef.current || mapRef.current) return
     const map = L.map(containerRef.current, { center, zoom, zoomControl: true, attributionControl: false })
 
-    if (tileUrl) tileRef.current = L.tileLayer(tileUrl, { maxZoom: 19, subdomains: 'abcd' }).addTo(map)
+    if (tileUrl) tileRef.current = L.tileLayer(tileUrl, { maxZoom: 19, className: tileClassName }).addTo(map)
 
     L.control.attribution({ position: 'bottomright', prefix: false })
-      .addAttribution('© <a href="https://www.openstreetmap.org/copyright">OSM</a> | © <a href="https://carto.com/">CARTO</a>')
+      .addAttribution('© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>')
       .addTo(map)
 
     // Scale bar
@@ -75,8 +76,8 @@ export default function MapView({ center, zoom, data, visibleLayers, exportArea,
   useEffect(() => {
     const map = mapRef.current; if (!map) return
     if (tileRef.current) { map.removeLayer(tileRef.current); tileRef.current = null }
-    if (tileUrl) { tileRef.current = L.tileLayer(tileUrl, { maxZoom: 19, subdomains: 'abcd' }).addTo(map); tileRef.current.bringToBack() }
-  }, [tileUrl])
+    if (tileUrl) { tileRef.current = L.tileLayer(tileUrl, { maxZoom: 19, className: tileClassName }).addTo(map); tileRef.current.bringToBack() }
+  }, [tileUrl, tileClassName])
 
   // Fly to
   useEffect(() => {

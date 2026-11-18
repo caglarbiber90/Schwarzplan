@@ -10,7 +10,7 @@ function createWindow() {
     height: 800,
     minWidth: 900,
     minHeight: 600,
-    title: 'Schwarzplan v1.0.1 – TEK TO NIK',
+    title: 'Schwarzplan v1.0.2 – TEK TO NIK',
     icon: path.join(__dirname, '..', '..', 'resources', 'icon.png'),
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
@@ -30,14 +30,36 @@ function createWindow() {
 app.whenReady().then(() => {
   // CSP: restrict network to known domains
   const { session } = require('electron')
+
+  // OSM services (tiles, Nominatim, Overpass) reject anonymous clients: their
+  // usage policies require an identifying User-Agent and a Referer. Browser
+  // fetch() cannot set User-Agent, so it is set here for those hosts only.
+  const osmHosts = [
+    'https://tile.openstreetmap.org/*',
+    'https://nominatim.openstreetmap.org/*',
+    'https://overpass-api.de/*',
+    'https://overpass.kumi.systems/*',
+    'https://maps.mail.ru/*'
+  ]
+  const userAgent = `Schwarzplan/${app.getVersion()} (TEK TO NIK Architekten; +https://tektonik.net)`
+  session.defaultSession.webRequest.onBeforeSendHeaders({ urls: osmHosts }, (details: any, cb: any) => {
+    cb({
+      requestHeaders: {
+        ...details.requestHeaders,
+        'User-Agent': userAgent,
+        'Referer': 'https://tektonik.net/'
+      }
+    })
+  })
+
   session.defaultSession.webRequest.onHeadersReceived((details: any, cb: any) => {
     cb({
       responseHeaders: {
         ...details.responseHeaders,
         'Content-Security-Policy': [
           "default-src 'self' 'unsafe-inline' 'unsafe-eval' data: blob:; " +
-          "connect-src 'self' https://nominatim.openstreetmap.org https://overpass-api.de https://overpass.kumi.systems https://maps.mail.ru https://*.basemaps.cartocdn.com https://*.tile.openstreetmap.org; " +
-          "img-src 'self' data: blob: https://*.basemaps.cartocdn.com https://*.tile.openstreetmap.org https://tektonik.net;"
+          "connect-src 'self' https://nominatim.openstreetmap.org https://overpass-api.de https://overpass.kumi.systems https://maps.mail.ru https://tile.openstreetmap.org; " +
+          "img-src 'self' data: blob: https://tile.openstreetmap.org https://tektonik.net;"
         ]
       }
     })
